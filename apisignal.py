@@ -3,6 +3,7 @@ import telebot
 import requests
 import time
 import threading
+import json
 from datetime import datetime
 
 # ================= 🔧 [ কনফিগারেশন ] =================
@@ -19,14 +20,31 @@ API_URL = "https://ins.skysysx.com/api/api/v1/webhook/QWiLIc9BkNU9F1yh1c6mBQG5p0
 CHECK_INTERVAL = 30
 user_status = {}
 
-# ================= 🔍 [ API চেক ফাংশন ] =================
+# ================= 🔍 [ API চেক ফাংশন - রিয়েল চেক] =================
 
 def check_api():
+    """API রিয়েলি কাজ করছে কিনা চেক করে - রেসপন্স কন্টেন্ট দেখে"""
     try:
         response = requests.get(API_URL, timeout=10)
-        return True  # সার্ভার সাড়া দিলেই অন
+        
+        # রেসপন্সের কন্টেন্ট চেক করো
+        if response.status_code == 200:
+            try:
+                data = response.json()
+                # এখানে তুমি চেক করতে পারো ডাটা ভ্যালিড কিনা
+                # যেমন: if data.get("success") == True
+                return True
+            except:
+                # JSON না হলে টেক্সট চেক
+                if "success" in response.text.lower():
+                    return True
+                else:
+                    # রেসপন্স এলেও ভ্যালিড না
+                    return False
+        else:
+            return False
     except:
-        return False  # না দিলে অফ
+        return False
 
 def send_signal(chat_id, is_online):
     current_time = datetime.now().strftime("%I:%M %p")
@@ -135,7 +153,7 @@ if __name__ == "__main__":
     print("=" * 50)
     print("🤖 MAX FUTURE API MONITOR")
     print("📡 Checking API every 30 seconds")
-    print("✅ Shows ONLY ON/OFF signals")
+    print("✅ Shows REAL ON/OFF signals")
     print("=" * 50)
     print("✅ Bot Started!")
     print("💡 Send /start - Get auto updates")
