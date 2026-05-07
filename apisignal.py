@@ -5,30 +5,56 @@ import time
 import threading
 from datetime import datetime
 
+# ================= 🔧 [ কনফিগারেশন ] =================
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 if not BOT_TOKEN:
-    raise Exception("BOT_TOKEN environment variable not set!")
+    BOT_TOKEN = "8685552473:AAGIN70mMdpdgq1upwmMUdJKKrfdyxsfPIA"
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
+# যে API চেক করবে
 API_URL = "https://ins.skysysx.com/api/api/v1/webhook/QWiLIc9BkNU9F1yh1c6mBQG5p06B-npMHRcgCKRicNM/account-push"
+
+# মনিটরিং সেটিংস
 CHECK_INTERVAL = 30
 user_status = {}
+
+# ================= 🔍 [ API চেক ফাংশন ] =================
 
 def check_api():
     try:
         response = requests.get(API_URL, timeout=10)
-        return response.status_code == 200
+        return True  # সার্ভার সাড়া দিলেই অন
     except:
-        return False
+        return False  # না দিলে অফ
 
 def send_signal(chat_id, is_online):
     current_time = datetime.now().strftime("%I:%M %p")
     date_time = datetime.now().strftime("%d %B, %Y")
+    
     if is_online:
-        msg = (f"🟢 *API IS ONLINE* 🟢\n━━━━━━━━━━━━━━━━━━━━\n✅ *MAX FUTURE USERS*\n🚀 *START WORK NOW!*\n━━━━━━━━━━━━━━━━━━━━\n📅 Date: {date_time}\n⏰ Time: {current_time}\n\n💎 *Powered by MAX FUTURE*")
+        msg = (
+            f"🟢 *API IS ONLINE* 🟢\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"✅ *MAX FUTURE USERS*\n"
+            f"🚀 *START WORK NOW!*\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📅 Date: {date_time}\n"
+            f"⏰ Time: {current_time}\n\n"
+            f"💎 *Powered by MAX FUTURE*"
+        )
     else:
-        msg = (f"🔴 *API IS OFFLINE* 🔴\n━━━━━━━━━━━━━━━━━━━━\n❌ *MAX FUTURE USERS*\n⏸️ *STOPPED WORKING!*\n━━━━━━━━━━━━━━━━━━━━\n📅 Date: {date_time}\n⏰ Time: {current_time}\n\n💎 *Powered by MAX FUTURE*")
+        msg = (
+            f"🔴 *API IS OFFLINE* 🔴\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"❌ *MAX FUTURE USERS*\n"
+            f"⏸️ *STOPPED WORKING!*\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📅 Date: {date_time}\n"
+            f"⏰ Time: {current_time}\n\n"
+            f"💎 *Powered by MAX FUTURE*"
+        )
+    
     try:
         bot.send_message(chat_id, msg, parse_mode="Markdown")
     except:
@@ -46,17 +72,42 @@ def monitor_for_user(chat_id):
         except:
             time.sleep(CHECK_INTERVAL)
 
+# ================= 🚀 [ কম্যান্ড হ্যান্ডলার ] =================
+
 @bot.message_handler(commands=['start'])
 def start_cmd(m):
     chat_id = m.chat.id
     is_online = check_api()
     current_time = datetime.now().strftime("%I:%M %p")
     date_time = datetime.now().strftime("%d %B, %Y")
+    
     if is_online:
-        msg = (f"🟢 *API IS ONLINE* 🟢\n━━━━━━━━━━━━━━━━━━━━\n✅ *MAX FUTURE USERS*\n🚀 *START WORK NOW!*\n━━━━━━━━━━━━━━━━━━━━\n📅 Date: {date_time}\n⏰ Time: {current_time}\n\n💎 *Powered by MAX FUTURE*\n\n📌 *Bot will notify you when status changes*")
+        msg = (
+            f"🟢 *API IS ONLINE* 🟢\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"✅ *MAX FUTURE USERS*\n"
+            f"🚀 *START WORK NOW!*\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📅 Date: {date_time}\n"
+            f"⏰ Time: {current_time}\n\n"
+            f"💎 *Powered by MAX FUTURE*\n\n"
+            f"📌 *You will receive auto updates when status changes*"
+        )
     else:
-        msg = (f"🔴 *API IS OFFLINE* 🔴\n━━━━━━━━━━━━━━━━━━━━\n❌ *MAX FUTURE USERS*\n⏸️ *STOPPED WORKING!*\n━━━━━━━━━━━━━━━━━━━━\n📅 Date: {date_time}\n⏰ Time: {current_time}\n\n💎 *Powered by MAX FUTURE*\n\n📌 *Bot will notify you when status changes*")
+        msg = (
+            f"🔴 *API IS OFFLINE* 🔴\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"❌ *MAX FUTURE USERS*\n"
+            f"⏸️ *STOPPED WORKING!*\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📅 Date: {date_time}\n"
+            f"⏰ Time: {current_time}\n\n"
+            f"💎 *Powered by MAX FUTURE*\n\n"
+            f"📌 *You will receive auto updates when status changes*"
+        )
+    
     bot.send_message(chat_id, msg, parse_mode="Markdown")
+    
     if chat_id not in user_status:
         user_status[chat_id] = True
         monitor_thread = threading.Thread(target=monitor_for_user, args=(chat_id,), daemon=True)
@@ -66,7 +117,7 @@ def start_cmd(m):
 def status_cmd(m):
     is_online = check_api()
     current_time = datetime.now().strftime("%I:%M %p")
-    msg = f"🟢 ONLINE - {current_time}" if is_online else f"🔴 OFFLINE - {current_time}"
+    msg = f"🟢 *ONLINE* - {current_time}" if is_online else f"🔴 *OFFLINE* - {current_time}"
     bot.send_message(m.chat.id, msg, parse_mode="Markdown")
 
 @bot.message_handler(commands=['stop'])
@@ -74,15 +125,27 @@ def stop_cmd(m):
     chat_id = m.chat.id
     if chat_id in user_status:
         user_status[chat_id] = False
-        bot.send_message(chat_id, "🔕 Monitoring stopped! Send /start to resume.", parse_mode="Markdown")
+        bot.send_message(chat_id, "🔕 *Monitoring stopped!* Send /start to resume.", parse_mode="Markdown")
     else:
-        bot.send_message(chat_id, "❌ No active monitoring! Send /start to begin.", parse_mode="Markdown")
+        bot.send_message(chat_id, "❌ *No active monitoring!* Send /start to begin.", parse_mode="Markdown")
+
+# ================= 🔄 [ মেইন ] =================
 
 if __name__ == "__main__":
-    print("Starting MAX FUTURE API MONITOR...")
+    print("=" * 50)
+    print("🤖 MAX FUTURE API MONITOR")
+    print("📡 Checking API every 30 seconds")
+    print("✅ Shows ONLY ON/OFF signals")
+    print("=" * 50)
+    print("✅ Bot Started!")
+    print("💡 Send /start - Get auto updates")
+    print("💡 Send /status - Check manually")
+    print("=" * 50)
+    
     try:
         bot.remove_webhook()
-        print("Webhook cleared.")
-    except Exception as e:
-        print("Webhook cleanup skipped.")
+        print("✅ Webhook removed!")
+    except:
+        pass
+    
     bot.infinity_polling(timeout=30, skip_pending=True)
