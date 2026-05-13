@@ -1,169 +1,168 @@
-import os
-import telebot
 import requests
 import time
-import threading
-import json
+import logging
 from datetime import datetime
 
-# ================= 🔧 [ কনফিগারেশন ] =================
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-if not BOT_TOKEN:
-    BOT_TOKEN = "8685552473:AAGIN70mMdpdgq1upwmMUdJKKrfdyxsfPIA"
+# ======================== 📌 YOUR INFO HERE ========================
+BOT_TOKEN = "8685552473:AAGIN70mMdpdgq1upwmMUdJKKrfdyxsfPIA"       # Your bot token from BotFather
+CHANNEL_ID = "-1003753611487"           # Your channel ID
+API_URL = "https://ins.skysysx.com/api/api/v1/webhook/QWiLIc9BkNU9F1yh1c6mBQG5p06B-npMHRcgCKRicNM/account-push"  # API to monitor (hidden from messages)
+# ====================================================================
 
-bot = telebot.TeleBot(BOT_TOKEN)
+# Telegram API
+SEND_MESSAGE_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 
-# যে API চেক করবে
-API_URL = "https://ins.skysysx.com/api/api/v1/webhook/QWiLIc9BkNU9F1yh1c6mBQG5p06B-npMHRcgCKRicNM/account-push"
+# Track status
+previous_status = None
 
-# মনিটরিং সেটিংস
-CHECK_INTERVAL = 30
-user_status = {}
+# Logging setup
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(message)s', 
+    level=logging.INFO,
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
-# ================= 🔍 [ API চেক ফাংশন - রিয়েল চেক] =================
+def send_channel_message(message):
+    """Send message to channel"""
+    payload = {
+        'chat_id': CHANNEL_ID,
+        'text': message,
+        'parse_mode': 'HTML'
+    }
+    try:
+        response = requests.post(SEND_MESSAGE_URL, json=payload, timeout=10)
+        if response.status_code == 200:
+            logging.info("✅ Message sent")
+            return True
+        else:
+            logging.error(f"❌ Failed: {response.text}")
+            return False
+    except Exception as e:
+        logging.error(f"❌ Error: {e}")
+        return False
 
 def check_api():
-    """API রিয়েলি কাজ করছে কিনা চেক করে - রেসপন্স কন্টেন্ট দেখে"""
+    """Check API status - Handles undefined, empty, null responses"""
     try:
         response = requests.get(API_URL, timeout=10)
         
-        # রেসপন্সের কন্টেন্ট চেক করো
-        if response.status_code == 200:
-            try:
-                data = response.json()
-                # এখানে তুমি চেক করতে পারো ডাটা ভ্যালিড কিনা
-                # যেমন: if data.get("success") == True
-                return True
-            except:
-                # JSON না হলে টেক্সট চেক
-                if "success" in response.text.lower():
-                    return True
-                else:
-                    # রেসপন্স এলেও ভ্যালিড না
-                    return False
-        else:
+        # Get response text
+        response_text = response.text.strip().lower()
+        
+        # Check 1: HTTP Status Code must be 200-299
+        if not (200 <= response.status_code < 300):
+            logging.warning(f"🔴 DOWN | HTTP: {response.status_code}")
             return False
-    except:
+        
+        # Check 2: Response contains 'undefined' → DOWN
+        if 'undefined' in response_text:
+            logging.warning(f"🔴 DOWN | Response contains 'undefined'")
+            return False
+        
+        # Check 3: Empty response → DOWN
+        if not response_text or response_text == '':
+            logging.warning(f"🔴 DOWN | Empty response")
+            return False
+        
+        # Check 4: Response is 'null' → DOWN
+        if response_text == 'null':
+            logging.warning(f"🔴 DOWN | Response is null")
+            return False
+        
+        # All checks passed
+        logging.info(f"🟢 UP | Status: {response.status_code}")
+        return True
+        
+    except requests.exceptions.RequestException as e:
+        logging.warning(f"🔴 DOWN | Connection error")
         return False
 
-def send_signal(chat_id, is_online):
-    current_time = datetime.now().strftime("%I:%M %p")
-    date_time = datetime.now().strftime("%d %B, %Y")
-    
-    if is_online:
-        msg = (
-            f"🟢 *API IS ONLINE* 🟢\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"✅ *MAX FUTURE USERS*\n"
-            f"🚀 *START WORK NOW!*\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📅 Date: {date_time}\n"
-            f"⏰ Time: {current_time}\n\n"
-            f"💎 *Powered by MAX FUTURE*"
-        )
-    else:
-        msg = (
-            f"🔴 *API IS OFFLINE* 🔴\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"❌ *MAX FUTURE USERS*\n"
-            f"⏸️ *STOPPED WORKING!*\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📅 Date: {date_time}\n"
-            f"⏰ Time: {current_time}\n\n"
-            f"💎 *Powered by MAX FUTURE*"
-        )
-    
-    try:
-        bot.send_message(chat_id, msg, parse_mode="Markdown")
-    except:
-        pass
+def get_current_time():
+    """Get current time"""
+    now = datetime.now()
+    return now.strftime("%I:%M:%S %p").lstrip("0")
 
-def monitor_for_user(chat_id):
-    previous_status = None
+def main():
+    global previous_status
+    
+    print("="*50)
+    print("🤖 API MONITOR BOT STARTED")
+    print("="*50)
+    print(f"📢 Channel: MAX API SIGNAL 🚦")
+    print(f"⏱️ Interval: 30 seconds")
+    print("="*50)
+    
+    logging.info("Bot Started")
+    
+    # First status check
+    current_status = check_api()
+    previous_status = current_status
+    
+    # Startup message (SAME AS BEFORE)
+    if current_status:
+        msg = f"""🚀 <b>MONITOR ACTIVE</b> 🚀
+
+✅ Server is currently <b>UP</b>.
+⏰ Time: {get_current_time()}
+
+────────────────
+🟢 STATUS: ONLINE 🟢
+────────────────
+
+📌 Monitoring in progress..."""
+    else:
+        msg = f"""🚨 <b>ALERT: DOWN</b> 🚨
+
+❌ Server is currently <b>DOWN</b>.
+⏰ Time: {get_current_time()}
+
+────────────────
+🔴 STATUS: OFFLINE 🔴
+────────────────
+
+📌 Monitoring in progress..."""
+    
+    send_channel_message(msg)
+    
+    # Main loop
     while True:
         try:
             current_status = check_api()
+            
             if current_status != previous_status:
-                send_signal(chat_id, current_status)
+                if current_status:
+                    # DOWN ➜ UP (SAME MESSAGE)
+                    msg = f"""🟢 <b>ALERT: BACK ONLINE</b> 🟢
+
+✅ Server is now <b>UP</b>.
+⏰ Time: {get_current_time()}
+
+────────────────
+✅ STATUS: ONLINE ✅
+────────────────
+
+✨ Everything is back to normal."""
+                else:
+                    # UP ➜ DOWN (SAME MESSAGE)
+                    msg = f"""🚨 <b>ALERT: OFFLINE</b> 🚨
+
+❌ Server is now <b>DOWN</b>.
+⏰ Time: {get_current_time()}
+
+────────────────
+🔴 STATUS: OFFLINE 🔴
+────────────────
+
+⚠️ Please check your server immediately."""
+                
+                send_channel_message(msg)
                 previous_status = current_status
-            time.sleep(CHECK_INTERVAL)
-        except:
-            time.sleep(CHECK_INTERVAL)
-
-# ================= 🚀 [ কম্যান্ড হ্যান্ডলার ] =================
-
-@bot.message_handler(commands=['start'])
-def start_cmd(m):
-    chat_id = m.chat.id
-    is_online = check_api()
-    current_time = datetime.now().strftime("%I:%M %p")
-    date_time = datetime.now().strftime("%d %B, %Y")
-    
-    if is_online:
-        msg = (
-            f"🟢 *API IS ONLINE* 🟢\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"✅ *MAX FUTURE USERS*\n"
-            f"🚀 *START WORK NOW!*\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📅 Date: {date_time}\n"
-            f"⏰ Time: {current_time}\n\n"
-            f"💎 *Powered by MAX FUTURE*\n\n"
-            f"📌 *You will receive auto updates when status changes*"
-        )
-    else:
-        msg = (
-            f"🔴 *API IS OFFLINE* 🔴\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"❌ *MAX FUTURE USERS*\n"
-            f"⏸️ *STOPPED WORKING!*\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📅 Date: {date_time}\n"
-            f"⏰ Time: {current_time}\n\n"
-            f"💎 *Powered by MAX FUTURE*\n\n"
-            f"📌 *You will receive auto updates when status changes*"
-        )
-    
-    bot.send_message(chat_id, msg, parse_mode="Markdown")
-    
-    if chat_id not in user_status:
-        user_status[chat_id] = True
-        monitor_thread = threading.Thread(target=monitor_for_user, args=(chat_id,), daemon=True)
-        monitor_thread.start()
-
-@bot.message_handler(commands=['status'])
-def status_cmd(m):
-    is_online = check_api()
-    current_time = datetime.now().strftime("%I:%M %p")
-    msg = f"🟢 *ONLINE* - {current_time}" if is_online else f"🔴 *OFFLINE* - {current_time}"
-    bot.send_message(m.chat.id, msg, parse_mode="Markdown")
-
-@bot.message_handler(commands=['stop'])
-def stop_cmd(m):
-    chat_id = m.chat.id
-    if chat_id in user_status:
-        user_status[chat_id] = False
-        bot.send_message(chat_id, "🔕 *Monitoring stopped!* Send /start to resume.", parse_mode="Markdown")
-    else:
-        bot.send_message(chat_id, "❌ *No active monitoring!* Send /start to begin.", parse_mode="Markdown")
-
-# ================= 🔄 [ মেইন ] =================
+            
+            time.sleep(30)
+            
+        except Exception as e:
+            logging.error(f"Loop error: {e}")
+            time.sleep(30)
 
 if __name__ == "__main__":
-    print("=" * 50)
-    print("🤖 MAX FUTURE API MONITOR")
-    print("📡 Checking API every 30 seconds")
-    print("✅ Shows REAL ON/OFF signals")
-    print("=" * 50)
-    print("✅ Bot Started!")
-    print("💡 Send /start - Get auto updates")
-    print("💡 Send /status - Check manually")
-    print("=" * 50)
-    
-    try:
-        bot.remove_webhook()
-        print("✅ Webhook removed!")
-    except:
-        pass
-    
-    bot.infinity_polling(timeout=30, skip_pending=True)
+    main()
