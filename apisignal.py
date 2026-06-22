@@ -6,7 +6,7 @@ from datetime import datetime
 # ======================== 📌 YOUR INFO HERE ========================
 BOT_TOKEN = "8685552473:AAH_3DUNAyQsJ8LsM7aagqV9oBNfRrufyqo"       # Your bot token from BotFather
 CHANNEL_ID = "-1003753611487"           # Your channel ID
-API_URL = "https://ins.skysysx.com/api/api/v1/webhook/QWiLIc9BkNU9F1yh1c6mBQG5p06B-npMHRcgCKRicNM/account-push"  # API to monitor (hidden from messages)
+API_URL = "https://ins.skysysx.com/api/api/v1/webhook/NiDEE4rwp-lxKv5HCYDznQMTMGx9Sfdmo1ZpGwowZy0/account-push"  # API to monitor (hidden from messages)
 # ====================================================================
 
 # Telegram API
